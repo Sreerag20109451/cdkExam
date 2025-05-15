@@ -7,20 +7,24 @@ import { Construct } from "constructs";
 import { generateBatch } from "../shared/util";
 import { schedules } from "../seed/movies";
 import * as apig from "aws-cdk-lib/aws-apigateway";
+import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
 
 export class ExamStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // NOTE: This table declaration is incomplete, and will cause a deployment to fail.
-    // The correct code will be provided in the exam question.
     const table = new dynamodb.Table(this, "CinemasTable", {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       partitionKey: { name: "cinemaId", type: dynamodb.AttributeType.NUMBER },
+      sortKey: { name: "movieId", type: dynamodb.AttributeType.STRING },
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       tableName: "CinemaTable",
-    });
+ });
 
+    table.addLocalSecondaryIndex({
+      indexName: "periodIx",
+      sortKey: { name: "period", type: dynamodb.AttributeType.STRING },
+ });
 
     const question1Fn = new lambdanode.NodejsFunction(this, "QuestionFn", {
       architecture: lambda.Architecture.ARM_64,
@@ -61,6 +65,22 @@ export class ExamStack extends cdk.Stack {
         allowOrigins: ["*"],
       },
     });
+
+
+    question1Fn.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        resources: [table.tableArn],
+        actions: ["dynamodb:Query"],
+      })
+    );
+
+        
+    const apiend = api.root.addResource("cinemas").addResource("{cinemaId}").addResource("movies")
+
+    apiend.addMethod("GET", new apig.LambdaIntegration(question1Fn))
+
+    table.grantReadData(question1Fn)
 
   }
 }
