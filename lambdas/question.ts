@@ -56,7 +56,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
       if(event.queryStringParameters && event.queryStringParameters["period"]){
         const date = event.queryStringParameters["period"]
 
-        items = items.filter( item => item.date = date )
+        items = items.filter( item => item.period = date )
           
       }
 
